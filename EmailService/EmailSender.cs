@@ -4,6 +4,7 @@ using MailKit.Net.Smtp;
 using System.Threading;
 using Microsoft.Extensions.Options;
 using EmailService.Configurations;
+using Serilog;
 
 namespace EmailService
 {
@@ -12,10 +13,11 @@ namespace EmailService
 
         readonly MailKit.Net.Smtp.SmtpClient smtpClient = new();
         readonly SmtpOptions smtpConfig;
+        int attempts = 0;
 
         public MailKitSmtpEmailSender(IOptionsSnapshot<SmtpOptions> options)
         {
-            ArgumentNullException.ThrowIfNull(options);    
+            ArgumentNullException.ThrowIfNull(options);
             smtpConfig = options.Value;
 
         }
@@ -25,17 +27,17 @@ namespace EmailService
         {
             if (!smtpClient.IsConnected)
                 await smtpClient.ConnectAsync(smtpConfig.Host, smtpConfig.Port, smtpConfig.useSsl, cancellationToken);
-            if (!smtpClient.IsAuthenticated)
-                await smtpClient.AuthenticateAsync(smtpConfig.UserName, smtpConfig.Password, cancellationToken);
-            //try
-            //{
-            //    if (!smtpClient.IsAuthenticated)
-            //        await smtpClient.AuthenticateAsync("pau", "sB3vF9dL6bmY7yP0", cancellationToken);
-            //}
-            //catch (Exception e)
-            //{
-            //   
-            //}
+            // if (!smtpClient.IsAuthenticated)
+            // await smtpClient.AuthenticateAsync(smtpConfig.UserName, smtpConfig.Password, cancellationToken);
+            try
+            {
+                if (!smtpClient.IsAuthenticated)
+                    await smtpClient.AuthenticateAsync("pau", "sB3vF9dL6bmY7yP0", cancellationToken);
+            }
+            catch (Exception e)
+            {
+                Log.Warning(e, "Ошибка аутентификации!");
+            }
         }
         public async Task SendEmailAsync(
             string fromName,
@@ -47,26 +49,35 @@ namespace EmailService
             CancellationToken cancellationToken
             )
         {
-            await EnsureConnectedAndAuthenticated(cancellationToken);
-            var mimeMessage = new MimeMessage();
-            mimeMessage.From.Add(new MailboxAddress(fromName, fromEmail));
-            mimeMessage.To.Add(new MailboxAddress(toName, toEmail));
-            mimeMessage.Subject = subject;
-            mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Plain)
-            {
-                Text = body
-            };
             try
             {
+                Log.Information("Начнем Отправку сообщения!");
+                await EnsureConnectedAndAuthenticated(cancellationToken);
+                var mimeMessage = new MimeMessage();
+                mimeMessage.From.Add(new MailboxAddress(fromName, fromEmail));
+                mimeMessage.To.Add(new MailboxAddress(toName, toEmail));
+                mimeMessage.Subject = subject;
+                mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Plain)
+                {
+                    Text = body
+                };
+             
                 var response = await smtpClient.SendAsync(mimeMessage, cancellationToken);
-                Console.WriteLine(response);    
+                Log.Information($"Ответ сервера: {response}");
+                Log.Information("Сообщение отправлено успешно!");
+
+
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Log.Warning(e, "Ошибка отправки!");
+                if (attempts < 2)
+                {
+                    Log.Information("Повторная отправка сообщения");
+                    attempts++;
+                    SendEmailAsync(fromName, fromEmail, toName, toEmail, subject, body, cancellationToken);
+                }
             }
-            
-               
 
         }
 
