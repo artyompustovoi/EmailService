@@ -13,7 +13,7 @@ namespace EmailService
 
         readonly MailKit.Net.Smtp.SmtpClient smtpClient = new();
         readonly SmtpOptions smtpConfig;
-        int attempts = 0;
+        
 
         public MailKitSmtpEmailSender(IOptionsSnapshot<SmtpOptions> options)
         {
@@ -49,8 +49,7 @@ namespace EmailService
             CancellationToken cancellationToken
             )
         {
-            try
-            {
+            
                 Log.Information("Начнем Отправку сообщения!");
                 await EnsureConnectedAndAuthenticated(cancellationToken);
                 var mimeMessage = new MimeMessage();
@@ -67,17 +66,8 @@ namespace EmailService
                 Log.Information("Сообщение отправлено успешно!");
 
 
-            }
-            catch (Exception e)
-            {
-                Log.Warning(e, "Ошибка отправки!");
-                if (attempts < 2)
-                {
-                    Log.Information("Повторная отправка сообщения");
-                    attempts++;
-                    SendEmailAsync(fromName, fromEmail, toName, toEmail, subject, body, cancellationToken);
-                }
-            }
+            
+           
 
         }
 

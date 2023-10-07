@@ -2,10 +2,6 @@ using EmailService.Configurations;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
-
-
-
-
 namespace EmailService
 {
 
@@ -45,7 +41,7 @@ namespace EmailService
                 app.UseSerilogRequestLogging();
                 app.UseSwagger();
                 app.UseSwaggerUI();
-
+                int attempts = 0;
 
 
                 //await using (var emailSender = new MailKitSmtpEmailSender())
@@ -55,17 +51,28 @@ namespace EmailService
 
 
                 Log.Information("Сервер запущен!");
-
-                app.MapGet("/get_current_utc_time", (
-                [FromServices] IEmailSender sender) =>
-
-                    
+                try { 
+                    app.MapGet("/email_server", (
+                    [FromServices] IEmailSender sender) =>
                     sender.SendEmailAsync("pau", "pau@delisdci.ru", "pustovojartem32", "pustovojartem32@gmail.com", "sbjct", "msg", new CancellationToken())
-                       
+
                 );
 
-
-
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Ошибка отправки!");
+                    if (attempts < 2)
+                    {
+                        Log.Information("Повторная отправка сообщения");
+                        attempts++;
+                        app.MapGet("/email_server", (
+                        [FromServices] IEmailSender sender) =>
+                        sender.SendEmailAsync("pau", "pau@delisdci.ru", "pustovojartem32", "pustovojartem32@gmail.com", "sbjct", "msg", new CancellationToken()));
+                    }
+                    else
+                        Log.Error(ex.Message);
+                }
                 app.Run();
             }
 
