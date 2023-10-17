@@ -17,7 +17,7 @@ namespace EmailService
                .WriteTo.Console()
                .CreateBootstrapLogger();
             Log.Information("Стартуем!");
-
+            //
 
             var builder = WebApplication.CreateBuilder(args);
 
