@@ -11,6 +11,8 @@ namespace EmailService.Configurations
         [Required] public string Password { get; set; }
         public int Port { get; set; }
         public bool useSsl { get; set; }
+        public int RetryLimit { get; set; } 
+
 
 
 

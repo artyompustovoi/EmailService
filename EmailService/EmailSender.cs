@@ -5,6 +5,7 @@ using System.Threading;
 using Microsoft.Extensions.Options;
 using EmailService.Configurations;
 using Serilog;
+using MailKit.Security;
 
 namespace EmailService
 {
@@ -27,17 +28,17 @@ namespace EmailService
         {
             if (!smtpClient.IsConnected)
                 await smtpClient.ConnectAsync(smtpConfig.Host, smtpConfig.Port, smtpConfig.useSsl, cancellationToken);
-            // if (!smtpClient.IsAuthenticated)
-            // await smtpClient.AuthenticateAsync(smtpConfig.UserName, smtpConfig.Password, cancellationToken);
             try
             {
                 if (!smtpClient.IsAuthenticated)
-                    await smtpClient.AuthenticateAsync("pau", "sB3vF9dL6bmY7yP0", cancellationToken);
+                    await smtpClient.AuthenticateAsync(smtpConfig.UserName, smtpConfig.Password, cancellationToken);
             }
+
             catch (Exception e)
             {
                 Log.Warning(e, "Ошибка аутентификации!");
             }
+            
         }
         public async Task SendEmailAsync(
             string fromName,
@@ -49,7 +50,8 @@ namespace EmailService
             CancellationToken cancellationToken
             )
         {
-            
+            try
+            {
                 Log.Information("Начнем Отправку сообщения!");
                 await EnsureConnectedAndAuthenticated(cancellationToken);
                 var mimeMessage = new MimeMessage();
@@ -60,12 +62,16 @@ namespace EmailService
                 {
                     Text = body
                 };
-             
+
                 var response = await smtpClient.SendAsync(mimeMessage, cancellationToken);
                 Log.Information($"Ответ сервера: {response}");
                 Log.Information("Сообщение отправлено успешно!");
 
+            }
+            catch (Exception e)
+            {
 
+            }
             
            
 
